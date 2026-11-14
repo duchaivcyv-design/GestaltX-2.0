@@ -78,8 +78,8 @@ jobs:
       - name: Build IPA
         id: build
         run: |
-          export BUILD_DATE="$(date -u +%F)"
-          .github/scripts/build-ipa.sh "$RUNNER_TEMP/ipa"
+         export BUILD_DATE="$(date -u +%F)"
+         bash .github/scripts/build-ipa.sh "$RUNNER_TEMP/ipa"
 
       - name: Upload IPA artifact
         uses: actions/upload-artifact@v7
