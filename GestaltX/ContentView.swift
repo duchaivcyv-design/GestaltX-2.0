@@ -189,7 +189,7 @@ struct ContentView: View {
         .onChange(of: scenePhase) { phase in
             if phase == .active && !isPreviewSession {
                 launchCatalog.refreshIfLoaded()
-                Task { await checkSharedImport() }
+                Task { await refreshDevicePlistOnActivation() }
             }
         }
         .onChange(of: canPresentSharedImport) { ready in
@@ -248,6 +248,17 @@ struct ContentView: View {
         guard !didAutoRead else { return }
         didAutoRead = true
         if await checkSharedImport() || model.hasDocument { return }
+        await model.connect(showErrorAlert: false)
+    }
+
+    // Re-read the live system plist when the app becomes active again. This
+    // covers returning after a respring and retries an earlier access failure.
+    // Never replace a local import or discard staged edits during activation.
+    private func refreshDevicePlistOnActivation() async {
+        guard acceptedWelcome, !isPreviewSession else { return }
+        if await checkSharedImport() { return }
+        guard !model.isBusy, model.changeCount == 0 else { return }
+        guard !model.hasDocument || model.sourceIsDevice else { return }
         await model.connect(showErrorAlert: false)
     }
 
