@@ -82,14 +82,14 @@ enum WallpaperPackages {
         let store = try CustomizationFiles.checked(base, in: root)
         let versions = try FileManager.default.contentsOfDirectory(atPath: store.path).compactMap(Int.init).sorted(by: >)
         for version in versions {
-            let paths = provider.identifiers.map { "\(base)/\(version)/Extensions/\($0)/descriptors" }
+            let paths = provider.identifiers.map { "\(base)/\(version)/Extensions/\($0)/configurations" }
             let existing = paths.filter { relative in
                 guard let url = try? CustomizationFiles.checked(relative, in: root) else { return false }
                 return (try? url.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true
             }
             if !existing.isEmpty { return existing }
         }
-        throw CustomizationFailure("This pack contains no compatible wallpapers.")
+        throw CustomizationFailure("PosterBoard has no compatible configurations directory for this provider. Initialize PosterBoard and try again.")
     }
 }
 
