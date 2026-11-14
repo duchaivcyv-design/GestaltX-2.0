@@ -25,7 +25,7 @@ final class CaptureSink: @unchecked Sendable {
             self.sawLine = false
             let timer = DispatchSource.makeTimerSource(queue: self.queue)
             timer.schedule(deadline: .now() + 0.5, repeating: 0.5)
-            timer.setEventHandler { [weak self] in self?.flush() }
+            timer.setEventHandler { [weak self = self] in self?.flush() }
             timer.resume()
             self.timer = timer
         }
@@ -111,7 +111,7 @@ final class NotificationSoundCaptureModel: ObservableObject {
 
         sink.begin(
             onFirstLine: { [weak self] in
-                Task { @MainActor in
+                Task { @MainActor [weak self] in
                     guard let self else { return }
                     if self.state == .connecting {
                         self.state = .capturing
@@ -119,7 +119,7 @@ final class NotificationSoundCaptureModel: ObservableObject {
                 }
             },
             onUpdate: { [weak self] all in
-                Task { @MainActor in
+                Task { @MainActor [weak self] in
                     guard let self else { return }
                     self.capturedSounds = all
                 }
