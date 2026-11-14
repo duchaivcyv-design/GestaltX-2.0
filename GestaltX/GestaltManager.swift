@@ -4,6 +4,14 @@ import Foundation
 import SwiftUI
 import Combine
 
+/// Sentinel for a MobileGestalt file handle that the process can already open
+/// with its existing OS/jailbreak entitlements. GestaltFileStore only needs a
+/// non-negative handle for its scoped-access lifetime; no sandbox extension is
+/// acquired or released for this direct-access path.
+private enum GestaltDirectFileAccess {
+    static let handle: Int64 = Int64.max
+}
+
 struct PlistImportOffer: Identifiable {
     let id = UUID()
     let data: Data
@@ -47,8 +55,20 @@ final class GestaltManager: ObservableObject {
             #if targetEnvironment(simulator)
             throw GestaltFailure("Device access is unavailable in the Simulator. Open a plist to explore GestaltX.")
             #else
+            // First use ordinary file access when the running process already has
+            // permission (for example, a properly privileged/jailbroken build).
+            // This reads the actual device plist; it does not alter or bypass the
+            // iOS sandbox. GestaltFileStore performs the real read and validates it.
+            let deviceURL = URL(fileURLWithPath: GestaltKeys.devicePath)
+            if let probe = try? FileHandle(forReadingFrom: deviceURL) {
+                try? probe.close()
+                return GestaltDirectFileAccess.handle
+            }
+
+            // The private SystemGroup route below remains gated to the OS version
+            // where this project has verified its existing backend.
             guard VersionSupport.supportsCurrentSystemGroupAccess else {
-                throw GestaltFailure("Direct on-device MobileGestalt access is only verified for iOS 27. On iOS 16–26, open or import a plist to use local editing.")
+                throw GestaltFailure("The app cannot open the real MobileGestalt plist with its current permissions. A privileged device environment or a supported SystemGroup backend is required. On iOS 16–26, use a local plist unless the process already has authorized file access.")
             }
             let target = (GestaltKeys.devicePath as NSString).deletingLastPathComponent
             let signedGroups = GXEntitlementsReader.usableAppGroups()
@@ -75,7 +95,10 @@ final class GestaltManager: ObservableObject {
             }
             throw GestaltFailure("MobileGestalt access was denied. Check the OS version and App Group signing.")
             #endif
-        }, release: { worse_query_release($0) }, eventSink: { text in
+        }, release: { handle in
+            // Direct file access has no sandbox-extension token to release.
+            if handle != GestaltDirectFileAccess.handle { worse_query_release(handle) }
+        }, eventSink: { text in
             NotificationCenter.default.post(name: Notification.Name("GestaltX.worse_query.log"), object: nil,
                                             userInfo: ["message": text])
         })
@@ -372,7 +395,7 @@ final class GestaltManager: ObservableObject {
                 throw GestaltFailure("Choose a plist smaller than 16 MB.")
             }
             let data = try Data(contentsOf: url, options: [.mappedIfSafe])
-            let result = try await files.loadLocal(data: data, name: url.lastPathComponent)
+            let result = try files.loadLocal(data: data, name: url.lastPathComponent)
             // A normal user-selected plist is local and is NOT device-ownership
             // verified; it can be edited/exported but cannot be restored as a
             // trusted device backup.
