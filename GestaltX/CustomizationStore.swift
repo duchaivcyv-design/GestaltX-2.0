@@ -23,8 +23,19 @@ actor CustomizationStore {
             throw CustomizationFailure("The device container could not be located. Read again.")
         }
         let handle = GXCustomizationAccess.acquirePath(path)
-        guard handle >= 0 else { throw CustomizationFailure("These system settings are not accessible on this device.") }
-        defer { worse_query_release(handle) }
+        if handle >= 0 {
+            defer { worse_query_release(handle) }
+            return try operation(URL(fileURLWithPath: path, isDirectory: true))
+        }
+
+        // Fallback for already-privileged environments (for example, a
+        // jailbreak build with filesystem access). This does not bypass the
+        // sandbox: the real operation must still succeed using the process'
+        // current permissions. The sandbox-extension backend remains the
+        // normal route on supported iOS 26/27 builds.
+        guard fm.isReadableFile(atPath: path), fm.isWritableFile(atPath: path) else {
+            throw CustomizationFailure("GestaltX found the PosterBoard container, but this app has no read/write permission. Use a build with the required device filesystem access; importing a wallpaper pack alone cannot grant it.")
+        }
         return try operation(URL(fileURLWithPath: path, isDirectory: true))
         #else
         throw CustomizationFailure("Device access is unavailable in the Simulator. Open a plist to explore GestaltX.")
