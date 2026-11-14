@@ -812,6 +812,12 @@ actor GestaltFileStore {
                 // Keep the device file's existing inode; backups are already durable.
                 eventSink("Write: \(output.count) bytes")
                 try writeData(output, deviceURL)
+                // Flush the in-place MobileGestalt write to the filesystem before
+                // reporting success; a respring must not race buffered file data.
+                let durableHandle = try FileHandle(forWritingTo: deviceURL)
+                try durableHandle.synchronize()
+                try durableHandle.close()
+                eventSink("Write: filesystem synchronization completed")
                 eventSink("Readback: comparing full plist and value types")
                 let readback = try Data(contentsOf: deviceURL)
                 guard try edited.matches(GestaltDocument(data: readback)) else { throw GestaltFailure("The write did not match the readback.") }
