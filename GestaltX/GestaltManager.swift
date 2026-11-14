@@ -395,7 +395,7 @@ final class GestaltManager: ObservableObject {
                 throw GestaltFailure("Choose a plist smaller than 16 MB.")
             }
             let data = try Data(contentsOf: url, options: [.mappedIfSafe])
-            let result = try await files.loadLocal(data: data, name: url.lastPathComponent)
+            let result = try files.loadLocal(data: data, name: url.lastPathComponent)
             // A normal user-selected plist is local and is NOT device-ownership
             // verified; it can be edited/exported but cannot be restored as a
             // trusted device backup.
@@ -557,11 +557,17 @@ final class GestaltManager: ObservableObject {
             logChanges(from: snapshot.document, to: edited, prefix: "[diff] ")
             let absentKeys = Set(Capability.all.filter { choices[$0.id] == .removeAdded }.flatMap(\.keys))
             let result = try await files.commit(edited, expected: snapshot, originallyAbsentKeys: absentKeys)
-            accept(result); needsRespring = result.source == .device
-            status = result.source == .device ? "Changes verified on device" : "Local changes saved"
+            accept(result)
+            // Keep the restart requirement latched until the user explicitly
+            // refreshes/reloads the live device document. A SpringBoard respring
+            // alone does not reload every MobileGestalt consumer.
+            needsRespring = result.source == .device ? true : needsRespring
+            status = result.source == .device ? "Changes written and read back from device" : "Local changes saved"
             let changedCacheOption = !DeviceCacheOptions.changes(from: snapshot.document, to: edited).isEmpty
             message = L(result.source == .device
-                        ? (changedCacheOption ? "Write verified. Some features require a device restart." : "Write verified. Some features require a device restart.")
+                        ? (changedCacheOption
+                           ? "Write and readback verified. Cache-backed features may require a full device restart; respring alone may not activate them."
+                           : "Write and readback verified. Some system features require a full device restart, not only respring.")
                         : "Local changes saved. Export the plist to keep a copy.")
             log(L(status)); await reloadBackups()
         } catch { failed(error); await reloadBackups() }
