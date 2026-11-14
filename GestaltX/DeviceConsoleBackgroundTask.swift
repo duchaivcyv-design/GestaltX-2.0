@@ -35,7 +35,7 @@ final class DeviceConsoleBackgroundTask {
     private var pendingFraction: Double?
 
     #if canImport(BackgroundTasks)
-    private var activeTask: BGContinuedProcessingTask?
+    private var activeTask: BGTask?
     #endif
 
     var isRunning: Bool {
@@ -110,7 +110,7 @@ final class DeviceConsoleBackgroundTask {
         #if canImport(BackgroundTasks)
         pendingSubtitle = subtitle
         pendingFraction = fraction
-        guard #available(iOS 26.0, *), let task = activeTask else { return }
+        guard #available(iOS 26.0, *), let task = activeTask as? BGContinuedProcessingTask else { return }
         task.updateTitle(task.title, subtitle: subtitle)
         if let fraction {
             task.progress.totalUnitCount = 100
