@@ -395,7 +395,7 @@ final class GestaltManager: ObservableObject {
                 throw GestaltFailure("Choose a plist smaller than 16 MB.")
             }
             let data = try Data(contentsOf: url, options: [.mappedIfSafe])
-            let result = try files.loadLocal(data: data, name: url.lastPathComponent)
+            let result = try await files.loadLocal(data: data, name: url.lastPathComponent)
             // A normal user-selected plist is local and is NOT device-ownership
             // verified; it can be edited/exported but cannot be restored as a
             // trusted device backup.
