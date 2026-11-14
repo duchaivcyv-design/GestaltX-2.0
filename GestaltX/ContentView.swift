@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 // Copyright (C) 2026 huamidev
 import SwiftUI
+import UniformTypeIdentifiers
 
 private enum IncomingShareOffer {
     case plist(PlistImportOffer)
@@ -28,6 +29,7 @@ struct ContentView: View {
     @State private var asksRespring = false
     @State private var asksImportedRestore = false
     @State private var showsShareNotice = false
+    @State private var showsPlistPicker = false
     @AppStorage("GestaltX.sharedImportNotice.v1") private var sharedImportNoticeShown = false
     @State private var selectedTab = 0
     @State private var didStart = false
@@ -50,6 +52,17 @@ struct ContentView: View {
         }
         .environmentObject(model)
         .tint(.blue)
+        .fileImporter(isPresented: $showsPlistPicker,
+                      allowedContentTypes: [.propertyList, .xml, .data],
+                      allowsMultipleSelection: false) { result in
+            switch result {
+            case .success(let urls):
+                guard let url = urls.first else { return }
+                Task { await model.open(url) }
+            case .failure(let error):
+                model.message = error.localizedDescription
+            }
+        }
         #if targetEnvironment(simulator)
         .sheet(item: $previewCategory) { category in
             NavigationStack { CategoryView(category: category) }.environmentObject(model)
@@ -356,6 +369,9 @@ struct ContentView: View {
             Section {
                 Button { Task { await model.connect() } } label: {
                     Label(L(model.isBusy ? "Reading…" : model.hasDocument ? "Read Again" : "Read MobileGestalt"), systemImage: "arrow.clockwise")
+                }.disabled(model.isBusy || model.changeCount > 0)
+                Button { showsPlistPicker = true } label: {
+                    Label(L("Open / Import Plist"), systemImage: "doc.badge.plus")
                 }.disabled(model.isBusy || model.changeCount > 0)
             }
             Section(L("Device Pairing")) {
