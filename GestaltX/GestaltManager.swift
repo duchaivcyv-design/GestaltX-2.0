@@ -354,25 +354,36 @@ final class GestaltManager: ObservableObject {
         await reloadBackups()
     }
 
-    #if targetEnvironment(simulator)
+    // Open a user-selected plist as a local editing document. This path is
+    // deliberately independent of private MobileGestalt/SystemGroup access,
+    // so it works on every supported iOS version (16–27).
     func open(_ url: URL) async {
-        guard !isBusy else { return }
+        guard !isBusy, changeCount == 0 else {
+            if changeCount > 0 { message = L("Save or discard your current changes before opening another plist.") }
+            return
+        }
         isBusy = true
         defer { isBusy = false }
         let granted = url.startAccessingSecurityScopedResource()
         defer { if granted { url.stopAccessingSecurityScopedResource() } }
         do {
             let values = try url.resourceValues(forKeys: [.fileSizeKey])
-            guard (values.fileSize ?? 0) <= 16 * 1024 * 1024 else { throw GestaltFailure("Choose a plist smaller than 16 MB.") }
-            let result = try await files.loadLocal(data: Data(contentsOf: url), name: url.lastPathComponent)
-            accept(result); status = "Local file opened"; needsRespring = false
+            guard (values.fileSize ?? 0) <= 16 * 1024 * 1024 else {
+                throw GestaltFailure("Choose a plist smaller than 16 MB.")
+            }
+            let data = try Data(contentsOf: url, options: [.mappedIfSafe])
+            let result = try files.loadLocal(data: data, name: url.lastPathComponent)
+            // A normal user-selected plist is local and is NOT device-ownership
+            // verified; it can be edited/exported but cannot be restored as a
+            // trusted device backup.
+            accept(result)
+            deviceAccessible = false
+            status = "Local plist opened"
+            needsRespring = false
             log("[open] \(url.lastPathComponent): \(result.data.count) bytes")
             for line in summarize(result.document) { log("[open] " + line) }
-            log(L("Local file opened") + ": " + url.lastPathComponent)
         } catch { failed(error) }
     }
-
-    #endif
 
     private func verifyImport(_ bytes: Data) async throws -> (Data, DevicePlistIdentity?) {
         if let payload = try DeviceBoundPlist.verifiedPayload(bytes) { return (payload, nil) }
