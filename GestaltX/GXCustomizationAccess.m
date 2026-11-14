@@ -452,6 +452,27 @@ static void GXDiscoverLaunchPaths(void) {
 + (NSString *)containerForIdentifier:(NSString *)identifier {
     if (![GXAllowedApplications() containsObject:identifier]) return nil;
     @synchronized (self) {
+        // Prefer the system's own LaunchServices container URL when available.
+        // This resolves the real PosterBoard container without requiring the
+        // iOS 26/27 sandbox-extension backend just to discover its path. Actual
+        // reads/writes remain subject to the process' existing filesystem rights.
+        @try {
+            Class proxyClass = NSClassFromString(@"LSApplicationProxy");
+            id proxy = [proxyClass respondsToSelector:@selector(applicationProxyForIdentifier:)]
+                ? [proxyClass applicationProxyForIdentifier:identifier] : nil;
+            NSURL *containerURL = [proxy respondsToSelector:@selector(dataContainerURL)]
+                ? [proxy dataContainerURL] : nil;
+            NSString *candidate = containerURL.path;
+            if (GXApplicationPath(candidate) &&
+                [GXContainerIdentity(candidate) isEqualToString:identifier]) {
+                [NSUserDefaults.standardUserDefaults setObject:candidate
+                    forKey:[@"GestaltX.customization.container." stringByAppendingString:identifier]];
+                GXAccessLog(@"container[%@]: resolved from LaunchServices proxy", identifier);
+                return candidate;
+            }
+        } @catch (NSException *exception) {
+            GXAccessLog(@"container[%@]: LaunchServices lookup failed: %@", identifier, exception.reason ?: @"unknown");
+        }
         NSUserDefaults *defaults = NSUserDefaults.standardUserDefaults;
         NSString *key = [@"GestaltX.customization.container." stringByAppendingString:identifier];
         NSString *cached = [defaults stringForKey:key];
