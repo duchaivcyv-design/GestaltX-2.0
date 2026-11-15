@@ -64,7 +64,6 @@ struct MobileGestaltCacheLayout: Codable, Equatable, Sendable {
     }
 
     static func scan(strings: Data, stringAddress: UInt64, constants: [Data]) throws -> Self {
-        let failure = GestaltFailure("Unable to resolve this device's MobileGestalt cache layout.")
         guard !strings.isEmpty, strings.count <= 32 * 1024 * 1024,
               stringAddress <= UInt64.max - UInt64(strings.count),
               constants.count <= 8, constants.allSatisfy({ $0.count <= 32 * 1024 * 1024 }) else { return originalProfile }
@@ -105,7 +104,7 @@ struct MobileGestaltCacheLayout: Codable, Equatable, Sendable {
         var targetLocations: [Key: Set<String>] = [:]
         
         for (sectionID, section) in constants.enumerated() where section.count >= 64 {
-            try section.withUnsafeBytes { raw in
+            section.withUnsafeBytes { raw in
                 for offset in stride(from: 0, through: section.count - 64, by: 8) {
                     let pointer = UInt64(littleEndian: raw.loadUnaligned(fromByteOffset: offset, as: UInt64.self)) & 0x0000_FFFF_FFFF_FFFF
                     guard let key = hashes[pointer] else { continue }
