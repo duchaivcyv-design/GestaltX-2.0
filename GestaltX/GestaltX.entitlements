@@ -2,9 +2,28 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<!-- App Group chính để chia sẻ container và cache layout -->
 	<key>com.apple.security.application-groups</key>
 	<array>
 		<string>group.com.huami.gestultx</string>
+		<string>group.com.huami.gestaltx</string>
 	</array>
+
+	<!-- Chia sẻ Keychain an toàn chống mất dữ liệu khi Respring -->
+	<key>keychain-access-groups</key>
+	<array>
+		<string>$(AppIdentifierPrefix)com.huami.gestultx</string>
+		<string>$(AppIdentifierPrefix)com.huami.gestaltx</string>
+	</array>
+
+	<!-- Cho phép truy cập dữ liệu hệ thống trực tiếp (Direct File Access) -->
+	<key>com.apple.security.files.user-selected.read-write</key>
+	<true/>
+
+	<!-- Cho phép tiến trình chạy ngầm và duy trì kết nối console/pairing -->
+	<key>com.apple.security.network.client</key>
+	<true/>
+	<key>com.apple.security.network.server</key>
+	<true/>
 </dict>
 </plist>
