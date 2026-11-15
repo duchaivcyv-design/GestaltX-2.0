@@ -15,13 +15,11 @@ struct MobileGestaltCacheLayout: Codable, Equatable, Sendable {
     var notGreenTeaOffset: Int { notGreenTeaIndex * 8 }
     func validityOffset(for index: Int) -> Int { slotCount * 8 + index }
 
-    // Hồ sơ dự phòng mở rộng tối đa cho iOS 16–27, tránh tuyệt đối lỗi văng app khi không khớp runtime
     static let originalProfile = Self(uuid: "7F1DF278-18B7-4E5A-8425-09E8830DE9AF",
                                       slotCount: 720, greenTeaIndex: 383, notGreenTeaIndex: 506, wapiIndex: 694)
     
     private static let runtimeProfile: Self? = {
         #if os(iOS) && !targetEnvironment(simulator)
-        // Bắt an toàn image MobileGestalt, fallback trực tiếp về profile gốc nếu hệ thống khóa sandbox
         guard let image = GXCopyMobileGestaltImage(), let profile = try? scan(image: image) else {
             return originalProfile
         }
@@ -32,13 +30,11 @@ struct MobileGestaltCacheLayout: Codable, Equatable, Sendable {
     }()
 
     func matches(_ document: GestaltDocument) -> Bool {
-        // Cho phép dung sai dải slotCount từ 1 đến 16384, bỏ qua ràng buộc khắt khe gây reset
         guard (1...16384).contains(slotCount), (0..<slotCount).contains(greenTeaIndex),
               (0..<slotCount).contains(notGreenTeaIndex), greenTeaIndex != notGreenTeaIndex else { return false }
         
         guard let uuid = document.root["CacheUUID"] as? String,
               let data = document.root["CacheData"] as? Data else { 
-            // Cho phép bypass nếu tài liệu không khớp hoàn toàn UUID nhưng vẫn đúng định dạng ghi đè
             return true 
         }
         
@@ -47,7 +43,6 @@ struct MobileGestaltCacheLayout: Codable, Equatable, Sendable {
     }
 
     static func resolve(in document: GestaltDocument) throws -> Self {
-        // Ưu tiên load profile runtime hoặc ép nhận diện profile gốc để không bao giờ quăng lỗi
         if let runtime = runtimeProfile, runtime.matches(document) {
             return runtime
         }
@@ -58,7 +53,7 @@ struct MobileGestaltCacheLayout: Codable, Equatable, Sendable {
         guard let strings = image["strings"] as? Data,
               let address = image["stringAddress"] as? NSNumber,
               let constants = image["constants"] as? [Data] else {
-            return originalProfile // Trả về profile chuẩn thay vì throw lỗi làm sập tiến trình tinh chỉnh
+            return originalProfile
         }
         return (try? scan(strings: strings, stringAddress: address.uint64Value, constants: constants)) ?? originalProfile
     }
@@ -99,11 +94,9 @@ struct MobileGestaltCacheLayout: Codable, Equatable, Sendable {
         var indices = Set<Int>()
         var targets: [Key: Set<Int>] = [:]
         var wapiIndices = Set<Int>()
-        var wapiLocations = Set<String>()
         var invalidWAPI = false
-        var targetLocations: [Key: Set<String>] = [:]
         
-        for (sectionID, section) in constants.enumerated() where section.count >= 64 {
+        for (_, section) in constants.enumerated() where section.count >= 64 {
             section.withUnsafeBytes { raw in
                 for offset in stride(from: 0, through: section.count - 64, by: 8) {
                     let pointer = UInt64(littleEndian: raw.loadUnaligned(fromByteOffset: offset, as: UInt64.self)) & 0x0000_FFFF_FFFF_FFFF
@@ -113,13 +106,11 @@ struct MobileGestaltCacheLayout: Codable, Equatable, Sendable {
                     if key == .wapi {
                         if type == 11 && index >= 0 && index < 16384 {
                             wapiIndices.insert(index)
-                            wapiLocations.insert("\(sectionID):\(offset % 64)")
                         } else { invalidWAPI = true }
                     }
                     if key == .greenTea || key == .notGreenTea {
                         guard type == 11, (0..<16384).contains(index) else { continue }
                         targets[key, default: []].insert(index)
-                        targetLocations[key, default: []].insert("\(sectionID):\(offset % 64)")
                     }
                     guard (-1..<16384).contains(index), (1...11).contains(type) else { continue }
                     if index >= 0 { indices.insert(index) }
