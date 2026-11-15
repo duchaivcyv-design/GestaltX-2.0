@@ -39,10 +39,10 @@ xcodebuild -quiet \
   -configuration Release \
   -sdk iphoneos \
   SYMROOT="$root/build" \
-  CODE_SIGNING_ALLOWED=YES \
+  CODE_SIGNING_ALLOWED=NO \
   CODE_SIGNING_REQUIRED=NO \
-  CODE_SIGN_IDENTITY="iPhone Developer" \
-  CODE_SIGNING_STYLE=Automatic \
+  CODE_SIGN_IDENTITY="" \
+  DEVELOPMENT_TEAM="" \
   build
 
 stage="$(mktemp -d)"
