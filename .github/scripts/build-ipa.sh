@@ -41,9 +41,8 @@ xcodebuild -quiet \
   SYMROOT="$root/build" \
   CODE_SIGNING_ALLOWED=YES \
   CODE_SIGNING_REQUIRED=NO \
-  CODE_SIGN_IDENTITY="" \
-  CODE_SIGNING_STYLE=Manual \
-  DEVELOPMENT_TEAM="" \
+  CODE_SIGN_IDENTITY="iPhone Developer" \
+  CODE_SIGNING_STYLE=Automatic \
   build
 
 stage="$(mktemp -d)"
