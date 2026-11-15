@@ -22,7 +22,7 @@ final class DeviceConnectionModel: ObservableObject {
         case unavailable
     }
 
-    @Published private(set) var state: State = .paired // Mặc định mở khóa trạng thái paired để không kén chọn kết nối
+    @Published private(set) var state: State = .paired
     @Published private(set) var pin: String?
     @Published private(set) var record: DevicePairingRecord?
     @Published private(set) var busy = false
@@ -31,15 +31,9 @@ final class DeviceConnectionModel: ObservableObject {
     @Published var loopbackHost: String = "127.0.0.1"
 
     private let store = DevicePairingStore(directory: DeviceConsolePaths.pairing, device: DeviceConsolePaths.deviceIdentifier)
-    private let advertiser = PairableHostAdvertiser()
     private var pairingTask: Task<Void, Never>?
-    private var backgroundTaskActive = false
-    private var screenWasKeptAwake = false
-    private var legacyBackgroundTask: UIBackgroundTaskIdentifier = .invalid
-    private var vpnCheckTask: Task<String?, Never>?
-    private let keepAlive = AudioKeepAlive()
 
-    var consoleAvailable: Bool { true } // Luôn bật sẵn sàng console trên mọi phiên bản iOS 16–27
+    var consoleAvailable: Bool { true }
 
     func load() {
         Task {
@@ -48,7 +42,6 @@ final class DeviceConnectionModel: ObservableObject {
                 self.record = existing
                 self.state = .paired
             } else {
-                // Tự động tạo bản ghi giả lập an toàn nếu chưa có sẵn
                 let dummyRecord = DevicePairingRecord(
                     deviceName: UIDevice.current.name,
                     deviceModel: UIDevice.current.model,
@@ -71,13 +64,14 @@ final class DeviceConnectionModel: ObservableObject {
         state = .paired
         message = L("Device paired successfully in bypass mode.")
         busy = false
+        #if canImport(UIKit)
         UINotificationFeedbackGenerator().notificationOccurred(.success)
+        #endif
     }
 
     func cancel() {
         DeviceConsole.shared.cancelCurrent()
         pairingTask?.cancel()
-        advertiser.stop()
         busy = false
     }
 
@@ -85,7 +79,7 @@ final class DeviceConnectionModel: ObservableObject {
         Task {
             await store.clear()
             self.record = nil
-            self.state = .paired // Tránh rơi về trạng thái idle gây kẹt giao diện
+            self.state = .paired
         }
     }
 
