@@ -133,10 +133,9 @@ final class GestaltManager: ObservableObject {
 
     func stageCacheOption(_ choice: CacheOptionChoice) {
         cacheOptionChoice = choice
-        guard let originalDoc = snapshot?.document else { return }
         if choice == .keep {
-            if let originalData = originalDoc.root["CacheData"] as? Data {
-                working?.root["CacheData"] = originalData
+            if let originalDoc = snapshot?.document {
+                working = originalDoc
             }
         } else {
             try? working?.setCacheOptions(choice.flags)
@@ -145,21 +144,12 @@ final class GestaltManager: ObservableObject {
 
     func stageWAPI(_ choice: WAPIChoice) {
         wapiChoice = choice
-        guard let originalDoc = snapshot?.document else { return }
         if choice == .keep {
-            if let originalData = originalDoc.root["CacheData"] as? Data {
-                working?.root["CacheData"] = originalData
+            if let originalDoc = snapshot?.document {
+                working = originalDoc
             }
         } else {
             try? working?.setWAPI(choice == .enabled)
-        }
-    }
-
-    /// Khôi phục toàn bộ CacheData về giá trị gốc của thiết bị khi hoàn nguyên tùy chọn cache
-    func resetCacheDataToOriginal() {
-        guard let originalDoc = snapshot?.document else { return }
-        if let originalData = originalDoc.root["CacheData"] as? Data {
-            working?.root["CacheData"] = originalData
         }
     }
 
@@ -171,9 +161,7 @@ final class GestaltManager: ObservableObject {
         defer { isBusy = false }
         cacheOptionChoice = .keep
         wapiChoice = .keep
-        if let originalData = originalDoc.root["CacheData"] as? Data {
-            working?.root["CacheData"] = originalData
-        }
+        working = originalDoc
         log("[restore-option] Original values restored safely.")
         await reloadBackups()
     }
