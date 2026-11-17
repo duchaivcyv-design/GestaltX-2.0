@@ -38,6 +38,7 @@ final class DeviceConnectionModel: ObservableObject {
     func load() {
         Task {
             let existing = await store.current()
+            let directory = await store.pairingDirectory()
             if let existing {
                 self.record = existing
                 self.state = .paired
@@ -46,7 +47,7 @@ final class DeviceConnectionModel: ObservableObject {
                     deviceName: UIDevice.current.name,
                     deviceModel: UIDevice.current.model,
                     deviceUDID: UIDevice.current.identifierForVendor?.uuidString ?? UUID().uuidString,
-                    pairingFilePath: store.pairingDirectory().appendingPathComponent("gestaltx_pairing.plist").path,
+                    pairingFilePath: directory.appendingPathComponent("gestaltx_pairing.plist").path,
                     hostAltIRKHex: "00000000000000000000000000000000",
                     pairedAt: Date(),
                     lastConnected: Date()
@@ -97,7 +98,8 @@ final class DeviceConnectionModel: ObservableObject {
         if let path = await store.currentPairingPath() {
             return path
         }
-        return store.pairingDirectory().appendingPathComponent("gestaltx_pairing.plist").path
+        let directory = await store.pairingDirectory()
+        return directory.appendingPathComponent("gestaltx_pairing.plist").path
     }
 
     func openLocalDevVPN() {
