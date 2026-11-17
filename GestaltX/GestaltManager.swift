@@ -138,7 +138,8 @@ final class GestaltManager: ObservableObject {
                 working = originalDoc
             }
         } else {
-            try? working?.setCacheOptions(choice.rawValue)
+            // Sửa lỗi: Truyền trực tiếp enum choice hoặc khởi tạo CachedOptionFlags(rawValue: choice.rawValue) thay vì truyền trực tiếp Int thô
+            try? working?.setCacheOptions(CachedOptionFlags(rawValue: choice.rawValue))
         }
     }
 
@@ -149,7 +150,8 @@ final class GestaltManager: ObservableObject {
                 working = originalDoc
             }
         } else {
-            try? working?.setWAPI(choice == WAPIChoice.enabled)
+            // Sửa lỗi: Dùng case .enable thay vì .enabled không tồn tại trong WAPIChoice
+            try? working?.setWAPI(choice == .enable)
         }
     }
 
