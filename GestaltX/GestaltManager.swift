@@ -284,12 +284,17 @@ final class GestaltManager: ObservableObject {
         do {
             let data = try await files.backupData(record)
             let restored = try GestaltDocument(data: data)
-            let result = try await files.loadLocal(data: restored.encoded(), name: record.filename)
+            let encodedData = try restored.encoded()
+            let result = try await files.loadLocal(data: encodedData, name: record.filename)
             accept(result)
             message = "Backup restored successfully."
             await reloadBackups()
-        } catch { failed(error); await reloadBackups() }
+        } catch { 
+            failed(error)
+            await reloadBackups() 
+        }
     }
+
     
     func openBackup(_ record: BackupRecord) async {
         await restore(record)
