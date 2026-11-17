@@ -155,6 +155,14 @@ final class GestaltManager: ObservableObject {
         }
     }
 
+    /// Khôi phục toàn bộ CacheData về giá trị gốc của thiết bị khi hoàn nguyên tùy chọn cache
+    func resetCacheDataToOriginal() {
+        guard let originalDoc = snapshot?.document else { return }
+        if let originalData = originalDoc.root["CacheData"] as? Data {
+            working?.root["CacheData"] = originalData
+        }
+    }
+
     var canRestoreCacheOption: Bool { true }
 
     func restoreCacheOption() async {
