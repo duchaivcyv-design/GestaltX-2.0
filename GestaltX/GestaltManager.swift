@@ -138,7 +138,7 @@ final class GestaltManager: ObservableObject {
                 working = originalDoc
             }
         } else {
-            try? working?.setCacheOptions(choice.flags)
+            try? working?.setCacheOptions(choice.rawValue)
         }
     }
 
@@ -149,7 +149,7 @@ final class GestaltManager: ObservableObject {
                 working = originalDoc
             }
         } else {
-            try? working?.setWAPI(choice == .enabled)
+            try? working?.setWAPI(choice == WAPIChoice.enabled)
         }
     }
 
@@ -166,7 +166,7 @@ final class GestaltManager: ObservableObject {
         await reloadBackups()
     }
 
-    func canRestore(_ capability: Capability) -> Bool { true }
+    var canRestore: (Capability) -> Bool { { _ in true } }
 
     func restoreCapability(_ capability: Capability) async {
         choices[capability.id] = .keep
@@ -311,7 +311,6 @@ final class GestaltManager: ObservableObject {
             await reloadBackups() 
         }
     }
-
     
     func openBackup(_ record: BackupRecord) async {
         await restore(record)
