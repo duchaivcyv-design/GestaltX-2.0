@@ -39,8 +39,7 @@ final class DeviceConsole: @unchecked Sendable {
 
     /// Current active session generation, 0 when idle.
     var currentGeneration: UInt64 {
-        lock.lock(); defer { lock.unlock() }
-        return generation
+        lock.withLock { generation }
     }
 
     func cancelCurrent() {
@@ -72,8 +71,12 @@ final class DeviceConsole: @unchecked Sendable {
         #if GXDEVICECONSOLE
         let g = gx_session_begin()
         guard g != 0 else { throw DeviceConsoleError.busy }
-        lock.lock(); generation = g; lock.unlock()
-        defer { lock.lock(); if generation == g { generation = 0 }; lock.unlock() }
+        lock.withLock { generation = g }
+        defer {
+            lock.withLock {
+                if generation == g { generation = 0 }
+            }
+        }
 
         return try await withCheckedThrowingContinuation { continuation in
             DispatchQueue.global(qos: .userInitiated).async {
@@ -93,7 +96,7 @@ final class DeviceConsole: @unchecked Sendable {
                     continuation.resume(returning: PairingOutcome(
                         deviceName: Self.string(out.device_name, "iOS Device"),
                         deviceModel: Self.string(out.device_model, "iPhone"),
-                        deviceUDID: Self.string(out.device_udid, NSUUID.UUIDString),
+                        deviceUDID: Self.string(out.device_udid, NSUUID().uuidString),
                         pairingFilePath: Self.string(out.pairing_file_path, outPath),
                         hostAltIRKHex: Self.string(out.host_alt_irk_hex, altIRKHex)))
                 } else {
@@ -120,8 +123,12 @@ final class DeviceConsole: @unchecked Sendable {
         #if GXDEVICECONSOLE
         let g = gx_session_begin()
         guard g != 0 else { throw DeviceConsoleError.busy }
-        lock.lock(); generation = g; lock.unlock()
-        defer { lock.lock(); if generation == g { generation = 0 }; lock.unlock() }
+        lock.withLock { generation = g }
+        defer {
+            lock.withLock {
+                if generation == g { generation = 0 }
+            }
+        }
 
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
             DispatchQueue.global(qos: .userInitiated).async {
@@ -136,8 +143,9 @@ final class DeviceConsole: @unchecked Sendable {
                 if code == 0 {
                     continuation.resume()
                 } else {
-                    let message = error.map { String(cString: $0) } ?? L("Capture active.")
-                    if let error { gx_string_free(error) }
+                    if let error {
+                        gx_string_free(error)
+                    }
                     continuation.resume() // Không quăng lỗi, tiếp tục duy trì luồng bắt log
                 }
             }
