@@ -133,21 +133,39 @@ final class GestaltManager: ObservableObject {
 
     func stageCacheOption(_ choice: CacheOptionChoice) {
         cacheOptionChoice = choice
+        guard let originalDoc = snapshot?.document else { return }
+        if choice == .keep {
+            if let originalData = originalDoc.root["CacheData"] as? Data {
+                working?.root["CacheData"] = originalData
+            }
+        } else {
+            try? working?.setCacheOptions(choice.flags)
+        }
     }
 
     func stageWAPI(_ choice: WAPIChoice) {
         wapiChoice = choice
+        guard let originalDoc = snapshot?.document else { return }
+        if choice == .keep {
+            if let originalData = originalDoc.root["CacheData"] as? Data {
+                working?.root["CacheData"] = originalData
+            }
+        } else {
+            try? working?.setWAPI(choice == .enabled)
+        }
     }
 
     var canRestoreCacheOption: Bool { true }
 
     func restoreCacheOption() async {
-        guard let before = snapshot else { return }
+        guard let originalDoc = snapshot?.document else { return }
         isBusy = true
         defer { isBusy = false }
-        snapshot = before
-        working = before.document
         cacheOptionChoice = .keep
+        wapiChoice = .keep
+        if let originalData = originalDoc.root["CacheData"] as? Data {
+            working?.root["CacheData"] = originalData
+        }
         log("[restore-option] Original values restored safely.")
         await reloadBackups()
     }
