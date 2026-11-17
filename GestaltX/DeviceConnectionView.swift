@@ -39,7 +39,7 @@ struct DeviceConnectionView: View {
                     connection.beginPairing()
                 } label: { 
                     Label(L("Refresh Device Connection"), systemImage: "checkmark.circle.fill")
-                        .foregroundStyle(.accentColor)
+                        .foregroundStyle(Color.accentColor)
                 }
             }
         }
