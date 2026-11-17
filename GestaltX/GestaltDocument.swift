@@ -263,7 +263,7 @@ actor GestaltFileStore {
 
     func loadDevice() throws -> DocumentSnapshot {
         let data = (try? Data(contentsOf: deviceURL)) ?? Data()
-        let document = (try? GestaltDocument(data: data)) ?? GestaltDocument(data: Data())
+        let document = (try? GestaltDocument(data: data)) ?? (try? GestaltDocument(data: Data())) ?? GestaltDocument()
         return DocumentSnapshot(data: data, document: document, source: .device, name: "MobileGestalt")
     }
 
