@@ -142,11 +142,11 @@ final class GestaltManager: ObservableObject {
     var canRestoreCacheOption: Bool { true }
 
     func restoreCacheOption() async {
-        guard let before = snapshot, let pending = working else { return }
+        guard let before = snapshot else { return }
         isBusy = true
         defer { isBusy = false }
         snapshot = before
-        working = pending
+        working = before.document
         cacheOptionChoice = .keep
         log("[restore-option] Original values restored safely.")
         await reloadBackups()
@@ -156,6 +156,9 @@ final class GestaltManager: ObservableObject {
 
     func restoreCapability(_ capability: Capability) async {
         choices[capability.id] = .keep
+        if let originalDoc = snapshot?.document {
+            working?.set(originalDoc.extra[capability.id], for: capability.id)
+        }
         log("[restore-field] Restored.")
         await reloadBackups()
     }
