@@ -131,27 +131,29 @@ final class GestaltManager: ObservableObject {
         if let snapshot { accept(snapshot) }
     }
 
+    // ===== SỬA LỖI 1+2: CachedOptionFlags không có init(rawValue:) — dùng .enabled (static let) =====
     func stageCacheOption(_ choice: CacheOptionChoice) {
         cacheOptionChoice = choice
-        if choice == .keep {
+        if choice == .enable {
+            try? working?.setCacheOptions(.enabled)
+        } else {
+            // .keep hoặc .restoreOriginal → khôi phục bản gốc
             if let originalDoc = snapshot?.document {
                 working = originalDoc
             }
-        } else {
-            // Sửa lỗi: Truyền trực tiếp enum choice hoặc khởi tạo CachedOptionFlags(rawValue: choice.rawValue) thay vì truyền trực tiếp Int thô
-            try? working?.setCacheOptions(CachedOptionFlags(rawValue: choice.rawValue))
         }
     }
 
+    // ===== SỬA LỖI 3: WAPIChoice không có .enable — chỉ có .disable / .keep / .restoreOriginal =====
     func stageWAPI(_ choice: WAPIChoice) {
         wapiChoice = choice
-        if choice == .keep {
+        if choice == .disable {
+            try? working?.setWAPI(false)
+        } else {
+            // .keep hoặc .restoreOriginal → khôi phục bản gốc
             if let originalDoc = snapshot?.document {
                 working = originalDoc
             }
-        } else {
-            // Sửa lỗi: Dùng case .enable thay vì .enabled không tồn tại trong WAPIChoice
-            try? working?.setWAPI(choice == .enable)
         }
     }
 
@@ -211,7 +213,7 @@ final class GestaltManager: ObservableObject {
         defer { if granted { url.stopAccessingSecurityScopedResource() } }
         do {
             let data = try Data(contentsOf: url, options: [.mappedIfSafe])
-            let result = try await files.loadLocal(data: data, name: url.lastPathComponent)
+            let result = try await files.loadLocal(data: data, name: url.lastPath)
             accept(result)
             deviceAccessible = false
             status = "Local plist opened"
