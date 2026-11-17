@@ -213,7 +213,7 @@ final class GestaltManager: ObservableObject {
         defer { if granted { url.stopAccessingSecurityScopedResource() } }
         do {
             let data = try Data(contentsOf: url, options: [.mappedIfSafe])
-            let result = try await files.loadLocal(data: data, name: url.lastPath)
+            let result = try await files.loadLocal(data: data, name: url.lastPathComponent)
             accept(result)
             deviceAccessible = false
             status = "Local plist opened"
