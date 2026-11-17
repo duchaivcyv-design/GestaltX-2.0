@@ -97,8 +97,22 @@ final class GestaltManager: ObservableObject {
         working?.artwork["ArtworkDeviceProductDescription"] as? String ?? working?.extra["Z/dqyWS6OZTRy10UcmUAhw"] as? String ?? UIDevice.current.model
     }
 
+    // ===== SỬA: preview áp dụng choices/region/model/subtype/đổi tên → changeCount > 0 → nút Áp dụng bật =====
     var preview: GestaltDocument? {
-        guard let doc = working else { return nil }
+        guard var doc = working, let snapshot else { return nil }
+        for capability in Capability.all {
+            capability.apply(choices[capability.id] ?? .keep, to: &doc, restoringFrom: snapshot)
+        }
+        if subtype != 0, doc.setArtwork(NSNumber(value: subtype), for: "ArtworkDeviceSubType") {
+            doc.set(NSNumber(value: true), for: "YlEtTtHlNesRBMal1CqRaA")
+        }
+        if changesName, doc.setArtwork(modelName.trimmingCharacters(in: .whitespacesAndNewlines), for: "ArtworkDeviceProductDescription") {
+            doc.set(modelName.trimmingCharacters(in: .whitespacesAndNewlines), for: "Z/dqyWS6OZTRy10UcmUAhw")
+            doc.set(modelName.trimmingCharacters(in: .whitespacesAndNewlines), for: "bbtR9jQx50Fv5Af/affNtA")
+        }
+        doc.applyRegion(salesRegion: RegionPreset.all.first { $0.id == regionID },
+                        regionCode: RegionPreset.all.first { $0.id == regionCodeID })
+        doc.applyModel(ModelPreset.all.first { $0.id == modelID })
         return doc
     }
 
@@ -262,19 +276,21 @@ final class GestaltManager: ObservableObject {
         working?.set(nil, for: key)
     }
 
+    // ===== SỬA: apply dùng preview (đã áp dụng choices) thay vì working =====
     func apply() async {
-        guard !isBusy, let snapshot, let edited = working else { return }
+        guard !isBusy, let snapshot, let edited = preview else { return }
+        guard changeCount > 0 else { return }
         isBusy = true
         defer { isBusy = false }
         do {
             let result = try await files.commit(edited, expected: snapshot)
             accept(result)
-            needsRespring = false
-            status = "Changes written successfully"
+            needsRespring = result.source == .device
+            status = result.source == .device ? "Changes written to device." : "Local changes saved."
             message = "Changes applied successfully."
             await reloadBackups()
         } catch {
-            message = "Changes saved successfully."
+            failed(error)
             await reloadBackups()
         }
     }
